@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HADI SECURE OS // SYSTEM</title>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --panel-color: #111;
+            --text-color: #0f0;
+            --danger-color: #f00;
+            --warning-color: #ff0;
+            --font-main: 'Courier New', Courier, monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- UTILITIES --- */
+        .hidden { display: none !important; }
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+
+        /* --- LOCK SCREEN --- */
+        #lock-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            border: 2px solid var(--danger-color);
+        }
+
+        #lock-screen h1 {
+            font-size: 3rem;
+            color: var(--danger-color);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        #lock-screen p { font-size: 1.2rem; margin-bottom: 20px; color: #fff; }
+
+        .btn-init {
+            padding: 15px 30px;
+            background: transparent;
+            border: 2px solid var(--text-color);
+            color: var(--text-color);
+            font-family: inherit;
+            font-size: 1.2rem;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        .btn-init:hover { background: var(--text-color); color: #000; }
+
+        /* --- DASHBOARD --- */
+        #dashboard {
+            display: grid;
+            grid-template-columns: 250px 1fr 250px;
+            grid-template-rows: 60px 1fr 200px;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        header {
+            grid-column: 1 / -1;
+            background: var(--panel-color);
+            border: 1px solid var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        .panel {
+            background: var(--panel-color);
+            border: 1px solid #333;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .panel-title {
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        /* --- CENTER VISUALIZER --- */
+        #main-monitor {
+            grid-column: 2;
+            grid-row: 2;
+            border: 1px solid var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: radial-gradient(circle, #002200 0%, #000 100%);
+        }
+
+        .radar {
+            width: 200px; height: 200px;
+            border: 2px solid var(--text-color);
+            border-radius: 50%;
+            position: relative;
+        }
+        .radar::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: conic-gradient(from 0deg, transparent 0deg, rgba(0,255,0,0.5) 60deg, transparent 60.1deg);
+            border-radius: 50%;
+            animation: radar-spin 2s infinite linear;
+        }
+        @keyframes radar-spin { 100% { transform: rotate(360deg); } }
+
+        /* --- LOGS & STATUS --- */
+        #log-panel {
+            grid-column: 1 / 3;
+            grid-row: 3;
+            overflow-y: auto;
+            font-size: 0.85rem;
+        }
+        .log-entry { margin-bottom: 4px; border-left: 2px solid #555; padding-left: 5px; }
+        .log-entry.alert { border-color: var(--danger-color); color: var(--danger-color); }
+        .log-entry.success { border-color: var(--text-color); color: var(--text-color); }
+
+        /* --- CONTROLS --- */
+        #controls-panel {
+            grid-column: 3;
+            grid-row: 2 / 4;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .status-btn {
+            background: #222; border: 1px solid var(--text-color);
+            color: var(--text-color); padding: 15px;
+            font-family: inherit; cursor: pointer; text-align: left;
+        }
+        .status-btn:hover { background: #333; }
+        .status-btn.danger { border-color: var(--danger-color); color: var(--danger-color); }
+        .status-btn.danger:hover { background: rgba(255,0,0,0.1); }
+
+        /* --- ATTACK MODE --- */
+        #attack-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 0, 0, 0.2);
+            z-index: 500;
+            pointer-events: none;
+            display: none;
+        }
+        body.threat-mode #attack-overlay { display: block; animation: flash-red 0.5s infinite; }
+        body.threat-mode { border: 10px solid var(--danger-color); }
+
+        @keyframes flash-red { 0%, 100% { background: rgba(255,0,0,0.1); } 50% { background: rgba(255,0,0,0.4); } }
+
+        .mic-status {
+            display: inline-block; width: 10px; height: 10px; background: #555; border-radius: 50%; margin-right: 5px;
+        }
+        .mic-listening { background: var(--text-color); box-shadow: 0 0 10px var(--text-color); }
+
+        /* Mobile Responsive */
+        @media (max-width: 800px) {
+            #dashboard {
+                display: flex; flex-direction: column; height: auto; overflow-y: auto;
+            }
+            #main-monitor { height: 300px; }
+            .panel { min-height: 150px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SYSTEM LOCKED OVERLAY -->
+    <div id="lock-screen">
+        <h1 class="blink">SYSTEM LOCKED</h1>
+        <p>Access Denied.</p>
+        <p>Initialize Voice Module:</p>
+        <button class="btn-init" onclick="startSystem()">Initialize Microphone</button>
+        <div style="margin-top: 20px; font-size: 0.8rem; color: #666;">
+            Say "Hadi Mobile" to unlock.
+        </div>
+    </div>
+
+    <!-- THREAT VISUALS -->
+    <div id="attack-overlay"></div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="dashboard" class="hidden">
+        <header>
+            <div>HADI SECURE OS <span style="font-size:0.8rem; opacity:0.7">// V.9.0</span></div>
+            <div>
+                <span class="mic-status" id="mic-indicator"></span>
+                <span id="mic-text">STANDBY</span>
+            </div>
+        </header>
+
+        <!-- Left: Logs -->
+        <div class="panel" id="log-panel">
+            <div class="panel-title">SYSTEM LOGS</div>
+            <div id="logs-content">
+                <!-- Logs go here -->
+            </div>
+        </div>
+
+        <!-- Center: Visualizer -->
+        <div class="panel" id="main-monitor">
+            <div class="radar"></div>
+            <div style="position: absolute; bottom: 20px; text-align: center;">
+                <h2 id="system-status-text" style="font-size: 2rem; text-shadow: 0 0 10px var(--text-color);">SECURE</h2>
+            </div>
+        </div>
+
+        <!-- Right: Controls -->
+        <div class="panel" id="controls-panel">
+            <div class="panel-title">MANUAL CONTROLS</div>
+            <button class="status-btn danger" onclick="triggerAttack()">SIMULATE CYBER ATTACK</button>
+            <button class="status-btn" onclick="stopAttack()">RESET / CLEAR THREAT</button>
+            <div style="flex:1"></div>
+            <div class="panel-title">VOICE COMMANDS:</div>
+            <div style="font-size: 0.8rem; color: #888;">
+                - "Hadi Mobile" (Unlock)<br>
+                - "Call Mother" (Call)<br>
+                - "Close all system" (Lock)<br>
+                - "Cyber Attack" (Alarm)
+            </div>
+        </div>
+    </div>
+
+    <!-- AUDIO FOR ALARM -->
+    <script>
+        /* --- CONFIGURATION --- */
+        const MOTHER_NUMBER = "03001234567"; // CHANGE THIS NUMBER
+        let recognition;
+        let isLocked = true;
+        let audioCtx;
+        let alarmOscillator;
+        let alarmGain;
+
+        // DOM Elements
+        const lockScreen = document.getElementById('lock-screen');
+        const dashboard = document.getElementById('dashboard');
+        const logsContent = document.getElementById('logs-content');
+        const micIndicator = document.getElementById('mic-indicator');
+        const micText = document.getElementById('mic-text');
+        const statusText = document.getElementById('system-status-text');
+
+        /* --- SYSTEM INITIALIZATION --- */
+        function startSystem() {
+            // Check browser support
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert("Voice API not supported in this browser. Use Chrome/Edge.");
+                return;
+            }
+
+            // Initialize Audio Context (must be user triggered)
+            initAudio();
+
+            // Setup Recognition
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = true; // Keep listening
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                micIndicator.classList.add('mic-listening');
+                micText.textContent = "LISTENING";
+                log("Voice module active. Listening for commands...", "normal");
+            };
+
+            recognition.onend = () => {
+                // Auto-restart unless we manually stopped or system is locked
+                if (!isLocked) {
+                    recognition.start();
+                } else {
+                    micIndicator.classList.remove('mic-listening');
+                    micText.textContent = "STANDBY";
+                }
+            };
+
+            recognition.onresult = (event) => {
+                const last = event.results.length - 1;
+                const command = event.results[last][0].transcript.trim().toLowerCase();
+                log(`Voice Input: "${command}"`, "normal");
+                processCommand(command);
+            };
+
+            recognition.start();
+        }
+
+        /* --- LOGIC CONTROL --- */
+        function processCommand(cmd) {
+            if (isLocked) {
+                if (cmd.includes("hadi mobile")) {
+                    unlockSystem();
+                }
+            } else {
+                // System is Unlocked - Commands available
+                if (cmd.includes("close all system")) {
+                    lockSystem();
+                } else if (cmd.includes("call mother")) {
+                    callContact(MOTHER_NUMBER, "Mother");
+                } else if (cmd.includes("cyber attack") || cmd.includes("threat")) {
+                    triggerAttack();
+                } else if (cmd.includes("stop") || cmd.includes("reset")) {
+                    stopAttack();
+                }
+            }
+        }
+
+        function unlockSystem() {
+            isLocked = false;
+            lockScreen.classList.add('hidden');
+            dashboard.classList.remove('hidden');
+            log("ACCESS GRANTED. System Unlocked.", "success");
+            document.body.style.borderColor = "#0f0";
+            
+            // Ensure recognition is running
+            try { recognition.start(); } catch(e){}
+        }
+
+        function lockSystem() {
+            isLocked = true;
+            lockScreen.classList.remove('hidden');
+            dashboard.classList.add('hidden');
+            stopAttack(); // Stop alarms when locking
+            log("SYSTEM LOCKED via Voice Command.", "alert");
+            
+            // Stop recognition loop to save battery
+            recognition.stop();
+        }
+
+        function callContact(number, name) {
+            log(`Initiating Call to ${name}...`, "success");
+            // Visual feedback
+            setTimeout(() => {
+                if(confirm(`Dialing ${name} at ${number}?`)) {
+                    window.location.href = `tel:${number}`;
+                }
+            }, 500);
+        }
+
+        /* --- ATTACK ALARM SYSTEM --- */
+        function triggerAttack() {
+            if (document.body.classList.contains('threat-mode')) return; // Already attacking
+
+            document.body.classList.add('threat-mode');
+            statusText.textContent = "THREAT DETECTED";
+            statusText.style.color = "var(--danger-color)";
+            document.querySelector('.radar').style.borderColor = "var(--danger-color)";
+            
+            log("!!! CYBER ATTACK DETECTED !!!", "alert");
+            log("Unauthorized Access Attempt Blocked.", "alert");
+            
+            playAlarm();
+
+            // Simulate "Mobile start without permission" response: Auto-lock after 5 seconds
+            log("Auto-Lock Sequence Initiated...", "alert");
+            setTimeout(() => {
+                if (document.body.classList.contains('threat-mode')) {
+                    lockSystem(); // Lock the system immediately due to threat
+                    alert("SYSTEM SECURE: Threat neutralized. System Locked.");
+                }
+            }, 5000);
+        }
+
+        function stopAttack() {
+            document.body.classList.remove('threat-mode');
+            statusText.textContent = "SECURE";
+            statusText.style.color = "var(--text-color)";
+            document.querySelector('.radar').style.borderColor = "var(--text-color)";
+            stopAlarm();
+            log("Threat cleared. System secure.", "success");
+        }
+
+        /* --- AUDIO ENGINE --- */
+        function initAudio() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            } catch(e) {
+                console.warn("Web Audio API not supported");
+            }
+        }
+
+        function playAlarm() {
+            if (!audioCtx) return;
+            
+            // Create oscillator
+            alarmOscillator = audioCtx.createOscillator();
+            alarmGain = audioCtx.createGain();
+            
+            alarmOscillator.type = 'sawtooth';
+            alarmOscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // A4
+            
+            // Modulate frequency for siren effect
+            alarmOscillator.frequency.linearRampToValueAtTime(880, audioCtx.currentTime + 0.5);
+            
+            alarmGain.gain.value = 0.1;
+
+            alarmOscillator.connect(alarmGain);
+            alarmGain.connect(audioCtx.destination);
+            
+            alarmOscillator.start();
+            
+            // Loop the siren effect
+            setInterval(() => {
+                if(alarmOscillator) {
+                    const now = audioCtx.currentTime;
+                    if(alarmOscillator.frequency.value > 600) {
+                         alarmOscillator.frequency.linearRampToValueAtTime(200, now + 0.5);
+                    } else {
+                         alarmOscillator.frequency.linearRampToValueAtTime(800, now + 0.5);
+                    }
+                }
+            }, 500);
+        }
+
+        function stopAlarm() {
+            if (alarmOscillator) {
+                alarmOscillator.stop();
+                alarmOscillator = null;
+            }
+        }
+
+        /* --- UTILS --- */
+        function log(msg, type) {
+            const div = document.createElement('div');
+            const time = new Date().toLocaleTimeString();
+            div.className = `log-entry ${type}`;
+            div.textContent = `[${time}] ${msg}`;
+            logsContent.prepend(div);
+        }
+
+    </script>
+</body>
+</html>
